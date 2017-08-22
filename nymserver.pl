@@ -38,7 +38,6 @@ use IO::Select;
 
 # Cryptographic module.
 # Debian: libgnupg-interface-perl
-use lib "$ENV{HOME}/perllib";
 use GnuPG::Interface;
 
 # Digest and support modules.
@@ -57,7 +56,7 @@ my $REMAIL = '/var/local/crypt/home/cpunk/Mix/mixmaster -SR';
 
 # Specify your nymserver key ID right here.
 # Warning : this must be the longkeyid !
-my $NYMKEYID = '562619C278247C3B';
+my $NYMKEYID = 'E0F3F1E19E03D1D8';
 
 # When things get bad:
 my $CONFIRM  = 1;   # Require confirmation of reply-blocks
@@ -490,16 +489,15 @@ sub remail {
         $gpg->options->hash_init (armor => 1,
                                   homedir => $PGPPATH,
                                   always_trust => 1,
-                                  extra_args => 
-                                    [ '--no-default-keyring',
+                                  extra_args => [
+                                      '--no-default-keyring',
                                       '--no-permission-warning',
                                       '--no-tty',
                                       '--batch',
-                                      '--keyring', $pubring,
-                                      '--keyring',
-                                      "$PGPPATH/pubring.pgp",
-                                      '--secret-keyring', 
-                                      "$PGPPATH/secring.pgp" ]);
+				      '--allow-weak-digest-algos',
+				      '--pinentry-mode=loopback',
+			              '--keyring', $pubring,
+			              '--keyring', "$PGPPATH/pubring.kbx" ]);
         my ($inputfd, $stdoutfd, $stderrfd, $statusfd, $handles) = mkfds();
         my $pid;
         $gpg->options->push_recipients($recipient);
@@ -673,15 +671,15 @@ sub decrypt_stdin {
     &fatal (71, "Error writing queue file ($!).\n") unless close (I);
 
     my $gpg = GnuPG::Interface->new();
-    $gpg->options->hash_init ( extra_args => [ '--no-default-keyring',
-                                               '--homedir', $PGPPATH,
-                                               '--no-permission-warning',
-                                               '--no-tty',
-                                               '--batch',
-                                               '--keyring',
-                                               "$PGPPATH/pubring.pgp",
-                                               '--secret-keyring', 
-                                               "$PGPPATH/secring.pgp"]);
+    $gpg->options->hash_init (extra_args => [
+                              '--no-default-keyring',
+                              '--homedir', $PGPPATH,
+                              '--no-permission-warning',
+                              '--no-tty',
+                              '--batch',
+                              '--allow-weak-digest-algos',
+                              '--pinentry-mode=loopback',
+                              '--keyring', "$PGPPATH/pubring.kbx" ]);
     my ($inputfd, $outputfd, $stderrfd, $statusfd, $handles) = mkfds();
     $gpg->passphrase($PASSPHRASE);
     my $pid = $gpg->decrypt(handles => $handles);
@@ -928,14 +926,17 @@ sub check_sig {
 
     # Signatures are correctly working now.
     $pgp = GnuPG::Interface->new();
-    $pgp->options->hash_init ( extra_args => [ '--no-default-keyring',
-                                               '--homedir', $PGPPATH,
-                                               '--keyring', $pubring,
-                                               '--no-permission-warning',
-                                               '--no-tty',
-                                               '--batch',
-                                               '--secret-keyring', 
-                                               "$PGPPATH/secring.pgp"]);
+    $pgp->options->hash_init ( extra_args => [
+                                '--no-default-keyring',
+                                '--homedir', $PGPPATH,
+                                '--keyring', $pubring,
+                                '--no-permission-warning',
+                                '--no-tty',
+                                '--batch',
+                                '--allow-weak-digest-algos',
+                                '--pinentry-mode=loopback',
+                                '--keyring', $pubring,
+                                '--keyring', "$PGPPATH/pubring.kbx" ]);
     my ($inputfd, $outputfd, $stderrfd, $statusfd, $handles) = mkfds();
     $pgp->passphrase($PASSPHRASE);
     my $pid = $pgp->decrypt(handles => $handles);
@@ -1204,15 +1205,14 @@ sub runconfig {
         my $gpg = GnuPG::Interface->new();
         my ($key, $block, $ring);
         my ($inputfd, $outputfd, $stderrfd, $statusfd, $handles) = mkfds();
-        $gpg->options->hash_init ( extra_args => [ '--no-default-keyring',
-                                                   '--no-permission-warning',
-                                                   '--no-secmem-warning',
-                                                   '--no-tty',
-                                                   '--batch',
-                                                   '--keyring', 
-                                                   $pubring,
-                                                   '--homedir',
-                                                   $PGPPATH ]);
+        $gpg->options->hash_init ( extra_args => [ 
+                                  '--no-default-keyring',
+                                  '--no-permission-warning',
+                                  '--no-secmem-warning',
+                                  '--no-tty',
+                                  '--batch',
+                                  '--keyring', $pubring,
+                                  '--homedir', $PGPPATH ]);
         my $pid = $gpg->wrap_call (handles => $handles,
                                    commands => [ '--import' ],
                                    command_args => [ "$QPREF.asc" ]);
@@ -1697,14 +1697,14 @@ EOF
         my $gpg = GnuPG::Interface->new();
         $gpg->options->hash_init (armor => 1,
                                   homedir => $PGPPATH,
-                                  extra_args => [ '--no-default-keyring',
-                                                  '--no-permission-warning',
-                                                  '--no-tty',
-                                                  '--batch',
-                                                  '--keyring',
-                                                  "$PGPPATH/pubring.pgp",
-                                                  '--secret-keyring', 
-                                                  "$PGPPATH/secring.pgp" ]);
+                                  extra_args => [
+                                      '--no-default-keyring',
+                                      '--no-permission-warning',
+                                      '--no-tty',
+                                      '--batch',
+				      '--allow-weak-digest-algos',
+				      '--pinentry-mode=loopback',
+			              '--keyring', "$PGPPATH/pubring.kbx" ]);
         my ($inputfd, $stdoutfd, $stderrfd, $statusfd, $handles) = mkfds();
         $gpg->options->meta_signing_key_id($NYMKEYID);
         $gpg->passphrase($PASSPHRASE);
@@ -2075,13 +2075,13 @@ EOF
             my $gpg = GnuPG::Interface->new();
 	    my ($key, $block, $ring);
             my ($inputfd, $outputfd, $stderrfd, $statusfd, $handles) = mkfds();
-            $gpg->options->hash_init ( extra_args => [ '--no-default-keyring',
-                                               '--no-permission-warning',
-                                               '--no-tty',
-                                               '--batch',
-                                               '--keyring', 
-                                               "$NDIR/$target.pgp",
-                                               '--armour']);
+            $gpg->options->hash_init ( extra_args => [
+                                         '--no-default-keyring',
+                                         '--no-permission-warning',
+                                         '--no-tty',
+                                         '--batch',
+                                         '--keyring', "$NDIR/$target.pgp",
+                                         '--armour']);
             my $pid = $gpg->wrap_call (handles => $handles,
                                     commands => [ '--export' ],
                                     command_args => [ $target ]);
