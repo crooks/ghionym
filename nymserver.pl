@@ -677,6 +677,7 @@ sub decrypt_stdin {
                               '--no-permission-warning',
                               '--no-tty',
                               '--batch',
+			      '--trust-model=tofu',
                               '--allow-weak-digest-algos',
                               '--pinentry-mode=loopback',
                               '--keyring', "$PGPPATH/pubring.kbx" ]);
